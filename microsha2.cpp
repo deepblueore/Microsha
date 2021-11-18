@@ -216,7 +216,6 @@ std::string eliminate_slashes(std::string buffer)
 				++i;
 			}while(i < size && buffer.at(i) == '/');
 		}
-		else ++i;
 	}
 	return buffer_eliminated;
 }
@@ -409,15 +408,14 @@ int parser(std::string input, std::vector<std::string>* parsed_input)
 			case '?':
 				{
 					++i;
-					if (i < input_size) symbol = buffer.at(i);
+					if (i < input_size) symbol = input.at(i);
 					buffer.push_back('?');
-					while(!isspace(symbol) && symbol != '>' && symbol != '<' && symbol != '|' &&
-						       	symbol != '*' && symbol != '?'
-							&& i < input.size())
+					while(i < input_size && !isspace(symbol) && symbol != '>' && symbol != '<' && symbol != '|' &&
+						       	symbol != '*' && symbol != '?')
 					{
 						buffer.push_back(symbol);
 						++i;
-						if (i < input_size) symbol = buffer.at(i);
+						if (i < input_size) symbol = input.at(i);
 					}
 					int line_size = line.size();
 					buffer_eliminated = eliminate_slashes(buffer);
@@ -432,20 +430,24 @@ int parser(std::string input, std::vector<std::string>* parsed_input)
 					break;
 				}
 			case '*':
+				//printf("in *\n");
 				++i;
                                 if (i < input_size) symbol = input.at(i);
                                 buffer.push_back('*');
+				//printf("succeed\n;");
                                 while(i < input_size && !isspace(symbol) && symbol != '>' &&
 					       	symbol != '<' && symbol != '|' && symbol != '*' && symbol != '?')
                                 {
                                         buffer.push_back(symbol);
                                         ++i;
-                                        if (i < input_size) symbol = buffer.at(i);
+                                        if (i < input_size) symbol = input.at(i);
                                 }
+				//printf("obrab\n");
                                 int line_size = line.size();
                                 buffer_eliminated = eliminate_slashes(buffer);
                                 str = "";
                                 replace(buffer_eliminated, str, &line);
+				//printf("again\n");
                                 if (line_size == line.size())
                                 {
                                         fprintf(stderr, "no such directory\n");
