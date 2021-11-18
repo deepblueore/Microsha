@@ -66,7 +66,7 @@ void do_cd(std::vector<std::string> buffer)
 	}
 	else
 	{
-		if(chdir(buffer[1].c_str()) == -1) fprintf(stderr, "ERROR");
+		if(chdir(buffer[1].c_str()) == -1) fprintf(stderr, "no such directory\n");
 	}
 	return;
 }
@@ -86,7 +86,7 @@ void perform(std::vector<std::string> element)
 				++iter;
 				if (*iter == "<" || *iter == ">" || *iter == "/" || *iter == "\\")
 				{
-					fprintf(stderr, "ERROR");
+					fprintf(stderr, "ERROR6");
 					return;
 				}
 				std::string tmpl;
@@ -109,7 +109,7 @@ void perform(std::vector<std::string> element)
 			}
 			else
 			{
-				fprintf(stderr, "ERROR");
+				fprintf(stderr, "ERROR5");
 				return;
 			}
 		}
@@ -121,7 +121,7 @@ void perform(std::vector<std::string> element)
                                 ++iter;
                                 if (*iter == "<" || *iter == ">" || *iter == "/" || *iter == "\\")
                                 {
-                                        fprintf(stderr, "ERROR");
+                                        fprintf(stderr, "ERROR4");
                                         return;
                                 }
                                 std::string tmpl;
@@ -144,14 +144,14 @@ void perform(std::vector<std::string> element)
                         }
                         else
                         {
-                                fprintf(stderr, "ERROR");
+                                fprintf(stderr, "ERROR3");
                                 return;
                         }
 
 		}
 		if (if_num_onei)
 		{
-			fprintf(stderr, "ERROR");
+			fprintf(stderr, "ERROR2");
 			return;
 		}
 		line.push_back(*iter);
@@ -163,7 +163,7 @@ void perform(std::vector<std::string> element)
 			argv.push_back((char*)(*iter).c_str());
 		argv.push_back(NULL);
 		execvp(argv[0], &argv[0]);
-		fprintf(stderr, "ERROR");
+		fprintf(stderr, "unknown command\n");
 		exit(1);
 	}
 	return;
@@ -355,18 +355,19 @@ int parser(std::string input, std::vector<std::string>* parsed_input)
 	int count_to = 0;
 	int count_from = 0;
 	int count_pipe = 0;
-	int input_size = input.size();
-	for (int i = 0; i < input_size && i != '\n'; ++i)
+	for (int i = 0; i < input.size() && input[i] != '\n'; ++i)
 	{
+		int input_size = input.size();
 		std::string buffer;
 		char buf_sym = input.at(i);
-		while (!isspace(buf_sym) && buf_sym != '<' && buf_sym != '>' && buf_sym != '?'
-				&& buf_sym != '*' && buf_sym != '|' && i < input_size)
+		while (!isspace(buf_sym) && !(buf_sym == '<' && prev_sym != '\\') && !(buf_sym == '>' && prev_sym != '\\') && buf_sym != '?'
+				&& buf_sym != '*' && buf_sym != '|' && i < input.size())
 		{
 			buffer.push_back(buf_sym);
-			prev_sym = buf_sym;
+			if (buf_sym == '\\' && prev_sym == '\\') prev_sym = 0;
+			else prev_sym = buf_sym;
 			++i;
-			buf_sym = input.at(i);
+			if (i < input_size) buf_sym = input.at(i);
 		}
 		std::string buffer_eliminated, str;
 		char symbol;
@@ -375,13 +376,13 @@ int parser(std::string input, std::vector<std::string>* parsed_input)
 			case '<':
 				if (!count_from)
 				{
-					if (!buffer.empty()) parsed_input->push_back(buffer);
-					parsed_input->push_back("<");
+					if (!buffer.empty()) line.push_back(buffer);
+					line.push_back("<");
 					++count_from;
 				}
 				else
 				{
-					std::fprintf(stderr, "ERROR");
+					fprintf(stderr, "too many '<'");
 					return 0;
 				}
 				continue;
@@ -389,35 +390,35 @@ int parser(std::string input, std::vector<std::string>* parsed_input)
 			case '>':
 				if (!count_to)
 				{
-					if (!buffer.empty()) parsed_input->push_back(buffer);
-					parsed_input->push_back(">");
+					if (!buffer.empty()) line.push_back(buffer);
+					line.push_back(">");
 					++count_to;
 				}
 				else
 				{
-					std::fprintf(stderr, "ERROR");
+					fprintf(stderr, "too many '>'");
 					return 0;
 				}
 				continue;
 				break;
 			case '|':
-				if (!buffer.empty()) parsed_input->push_back(buffer);
-				parsed_input->push_back("|");
+				if (!buffer.empty()) line.push_back(buffer);
+				line.push_back("|");
 				++count_pipe;
 				continue;
 				break;
 			case '?':
 				{
 					++i;
-					symbol = buffer.at(i);
+					if (i < input_size) symbol = buffer.at(i);
 					buffer.push_back('?');
 					while(!isspace(symbol) && symbol != '>' && symbol != '<' && symbol != '|' &&
 						       	symbol != '*' && symbol != '?'
-							&& i < input_size)
+							&& i < input.size())
 					{
 						buffer.push_back(symbol);
 						++i;
-						symbol = buffer.at(i);
+						if (i < input_size) symbol = buffer.at(i);
 					}
 					int line_size = line.size();
 					buffer_eliminated = eliminate_slashes(buffer);
@@ -425,7 +426,7 @@ int parser(std::string input, std::vector<std::string>* parsed_input)
 					replace(buffer_eliminated, str, &line);
 					if (line_size == line.size())
 					{
-						fprintf(stderr, "ERROR");
+						fprintf(stderr, "no such directory\n");
 						return 0;
 					}
 					continue;
@@ -433,14 +434,14 @@ int parser(std::string input, std::vector<std::string>* parsed_input)
 				}
 			case '*':
 				++i;
-                                symbol = buffer.at(i);
+                                if (i < input_size) symbol = buffer.at(i);
                                 buffer.push_back('?');
                                 while(!isspace(symbol) && symbol != '>' && symbol != '<' && symbol != '|' && symbol != '*' && symbol != '?'
-                                                && i < input_size)
+                                                && i < input.size())
                                 {
                                         buffer.push_back(symbol);
                                         ++i;
-                                        symbol = buffer.at(i);
+                                        if (i < input_size) symbol = buffer.at(i);
                                 }
                                 int line_size = line.size();
                                 buffer_eliminated = eliminate_slashes(buffer);
@@ -448,41 +449,41 @@ int parser(std::string input, std::vector<std::string>* parsed_input)
                                 replace(buffer_eliminated, str, &line);
                                 if (line_size == line.size())
                                 {
-                                        fprintf(stderr, "ERROR");
+                                        fprintf(stderr, "no such directory\n");
                                         return 0;
                                 }
 				continue;
 				break;
-			break;
 		}
+		if(buffer == "time" && line.size() == 0) continue;
 		if (!buffer.empty()) line.push_back(buffer);
 	}
 	if (!line.empty())
 	{
 		for (std::vector<std::string>::iterator iter = line.begin(); iter != line.end();
 			++iter) parsed_input->push_back(*iter);
+		//printf("%s", (parsed_input)[0]);
 		if((*parsed_input)[0] == "pwd" && parsed_input->size() == 1) return 1;
 	}
 	if (count_pipe) return 2;
 	return 3;
 }
 
-int main(int argc, char* argv[])
+int main()
 {
 	if(chdir(getenv("HOME")) == -1) perror("chdir");
 	signal(SIGINT, SIG_IGN);
-	std::string directory = get_directory();
 	char invite_symbol = is_privileged();
 	do
 	{
-		printf("%s %c", directory.c_str(), invite_symbol);
+		std::string directory = get_directory();
+		printf("[%s]%c ", directory.c_str(), invite_symbol);
 		std::string console_input;
 		std::getline(std::cin, console_input);
-		printf("\n");
 		std::string element;
 		int counter = 0;
 		while(isspace(console_input.at(counter))) ++counter;
-		while(!isspace(console_input.at(counter)) && console_input.at(counter) != '>' &&
+		while(counter < console_input.size() && !isspace(console_input.at(counter)) && console_input.at(counter) != '>' &&
 				console_input.at(counter) != '<' && console_input.at(counter) != '|')
 		{
 			element.push_back(console_input.at(counter));
@@ -497,18 +498,21 @@ int main(int argc, char* argv[])
 		{
 			pid_t pid = fork();
 			if (pid == 0)
-			{
+			{	
+				//printf("fork started\n");
 				signal(SIGINT, SIG_DFL);
 				std::vector<std::string> argv;
 				int symbol_marker = parser(console_input, &argv);
+				//printf("marker: %d\n", symbol_marker);
 				switch(symbol_marker)
 				{
 					case 0:
 						exit(1);
 					case 1:
 						{
+							//printf("we are in case 1\n");
 							std::string directory = get_directory();
-							printf("%s", directory.c_str());
+							printf("%s\n", directory.c_str());
 						}
 						break;
 					case 2:
