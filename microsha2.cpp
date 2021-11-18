@@ -1,0 +1,570 @@
+#include <stdio.h>
+#include <cstdio>
+#include <sys/types.h>
+#include <unistd.h>
+#include <pwd.h>
+#include <cstring>
+#include <errno.h>
+#include <vector>
+#include <string>
+#include <cctype>
+#include <dirent.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <algorithm>
+#include <fnmatch.h>
+#include <csignal>
+#include <sys/wait.h>
+#include <iostream>
+#include <signal.h>
+#include <sys/time.h>
+#include <sys/resource.h>
+
+char* double_size(char* array, size_t* size)
+{
+        int size_i = (int)*size;
+        char* array_new = new char[size_i * 2];
+        for (int i = 0; i < size_i; ++i) array_new[i] = array[i];
+        delete array;
+        *size = size_i * 2;
+        return array_new;
+}
+
+char is_privileged()
+{
+	passwd* user = getpwuid(getuid());
+        bool is_root = !(bool)std::strcmp(user->pw_name, "root");
+        if (is_root) return '!';
+	return '>';
+
+}
+
+std::string get_directory()
+{
+	errno = 0;
+        size_t buf_size = 20;
+        char* buffer = new char[buf_size];
+        if (getcwd(buffer, buf_size) == NULL)
+        {
+        	while(errno == ERANGE)
+                {
+                	buffer = double_size(buffer, &buf_size);
+                        errno = 0;
+                        getcwd(buffer, buf_size);
+                }
+        }
+	std::string directory;
+	for (int i = 0; i < buf_size; ++i) directory.push_back(buffer[i]);
+	return directory;
+}
+
+void do_cd(std::vector<std::string> buffer)
+{
+	if (buffer.size() == 1) 
+	{
+		if(chdir(getenv("HOME")) == -1) perror("chdir");
+	}
+	else
+	{
+		if(chdir(buffer[1].c_str()) == -1) fprintf(stderr, "ERROR");
+	}
+	return;
+}
+
+void perform(std::vector<std::string> element)
+{
+	std::vector<std::string> line;
+	bool if_num_onei = false;
+	for (std::vector<std::string>::iterator iter = element.begin(); iter != element.end(); ++iter)
+	{
+		if (*iter == "\n") break;
+		else if (*iter == "<")
+		{
+			if (iter != element.end() - 1)
+			{
+				if_num_onei - false;
+				++iter;
+				if (*iter == "<" || *iter == ">" || *iter == "/" || *iter == "\\")
+				{
+					fprintf(stderr, "ERROR");
+					return;
+				}
+				std::string tmpl;
+				char prev_char = 0;
+				for (int i = 0; i < (*iter).size(); ++i)
+				{
+					if ((*iter)[i] != '\\' || prev_char == '\\') tmpl.push_back((*iter)[i]);
+					else if ((*iter)[i] == '\\' && prev_char == '\\') prev_char = 0;
+					else prev_char = (*iter)[i];
+				}
+				int fid = open((char *)(*iter).c_str(), O_RDWR | O_CREAT | O_TRUNC, 0666);
+				if (fid == -1)
+				{
+					perror("open");
+					return;
+				}
+				if_num_onei = true;
+				dup2(fid, 0);
+				continue;
+			}
+			else
+			{
+				fprintf(stderr, "ERROR");
+				return;
+			}
+		}
+		else if (*iter == ">")
+		{
+			if (iter != element.end() - 1)
+                        {
+                                if_num_onei - false;
+                                ++iter;
+                                if (*iter == "<" || *iter == ">" || *iter == "/" || *iter == "\\")
+                                {
+                                        fprintf(stderr, "ERROR");
+                                        return;
+                                }
+                                std::string tmpl;
+                                char prev_char = 0;
+                                for (int i = 0; i < (*iter).size(); ++i)
+                                {
+                                        if ((*iter)[i] != '\\' || prev_char == '\\') tmpl.push_back((*iter)[i]);
+                                        else if ((*iter)[i] == '\\' && prev_char == '\\') prev_char = 0;
+                                        else prev_char = (*iter)[i];
+                                }
+                                int fid = open((char *)(*iter).c_str(), O_RDWR | O_CREAT | O_TRUNC, 0666);
+                                if (fid == -1)
+                                {
+                                        perror("open");
+                                        return;
+                                }
+                                if_num_onei = true;
+                                dup2(fid, 1);
+                                continue;
+                        }
+                        else
+                        {
+                                fprintf(stderr, "ERROR");
+                                return;
+                        }
+
+		}
+		if (if_num_onei)
+		{
+			fprintf(stderr, "ERROR");
+			return;
+		}
+		line.push_back(*iter);
+	}
+	if (!line.empty())
+	{
+		std::vector<char*> argv;
+		for (std::vector<std::string>::iterator iter = line.begin(); iter != line.end(); ++iter) 
+			argv.push_back((char*)(*iter).c_str());
+		argv.push_back(NULL);
+		execvp(argv[0], &argv[0]);
+		fprintf(stderr, "ERROR");
+		exit(1);
+	}
+	return;
+}
+
+void make_pipe(std::vector<std::vector<std::string>>& piped_input)
+{
+	int iter = 0;
+	for (iter; iter <= piped_input.size(); ++iter)
+	{
+		int fd[2];
+		pipe(fd);
+		pid_t pid = fork();
+		if (!pid)
+		{
+			dup2(fd[1], 1);
+			close(fd[0]);
+			if (piped_input[iter][0].size() == 1 && piped_input[iter][0] == "pwd")
+			{
+				std::string buffer = get_directory();
+				printf("%s", buffer.c_str());
+				return;
+			}
+			perform(piped_input[iter]);
+		}
+		dup2(fd[0], 0);
+		close(fd[1]);
+	}
+	if (piped_input[iter][0].size() == 1 && piped_input[iter][0] == "pwd")
+	{
+		std::string buffer = get_directory();
+		printf("%s", buffer.c_str());
+		return;
+	}
+	perform(piped_input[iter]);
+	return;
+}
+
+std::string eliminate_slashes(std::string buffer)
+{
+	int size = buffer.size();
+	std::string buffer_eliminated;
+	for (int i = 0; i < size; ++i)
+	{
+		buffer_eliminated.push_back(buffer.at(i));
+		if (buffer.at(i) == '/')
+		{
+			do
+			{
+				++i;
+			}while(buffer.at(i) == '/' && i < size);
+		}
+		else ++i;
+	}
+	return buffer_eliminated;
+}
+
+int replace(std::string buffer, std::string directory, std::vector<std::string>* parsed_input)
+{
+	std::vector<std::string> line;
+	int iter = 0;
+	bool if_root_dir = false;
+	int buffer_size = buffer.size();
+	std::string until_slash, after_slash, path;
+	char symbol = '0';
+	if (buffer.at(0) == '/')
+	{
+		if_root_dir = true;
+		if (!directory.empty()) path = directory;
+		else path = "/";
+	}
+	for (iter; symbol != '/' && iter < buffer_size; ++iter)
+	{
+		symbol = buffer.at(iter);
+		until_slash.push_back(symbol);
+	}
+	if (buffer.at(iter) == '/')
+	{
+		for (iter; iter < buffer_size; ++iter)
+		{
+			symbol = buffer.at(iter);
+			after_slash.push_back(symbol);
+		}
+		if (!if_root_dir) path = ".";
+		if (until_slash == ".")
+		{
+			if (if_root_dir) path = directory + "/" + until_slash;
+			else path = ".";
+			if (after_slash.size() > 1) replace(after_slash, path, parsed_input);
+			else parsed_input->push_back(path);
+		}
+		else if (until_slash == "..")
+		{
+			if (if_root_dir) path = directory + "/" + until_slash;
+			else path = "..";
+			if (after_slash.size() > 1) replace(after_slash, path, parsed_input);
+			else parsed_input->push_back(path);
+		}
+		else
+		{
+			struct stat stat_buf;
+			DIR* dir = opendir(path.c_str());
+			if (!dir) return 1;
+			for (dirent* dir_read = readdir(dir); dir_read; dir_read = readdir(dir))
+			{
+				if (std::string(dir_read->d_name) == "." || std::string(dir_read->d_name) == "..") continue;
+				if (!fnmatch(until_slash.c_str(), dir_read->d_name, 0))
+				{
+					if (if_root_dir) path = directory + "/" + (std::string)dir_read->d_name;
+					else path = (std::string)dir_read->d_name;
+					if (stat(path.c_str(), &stat_buf) == -1) return 1;
+					if (S_ISDIR(stat_buf.st_mode)) line.push_back(std::string(dir_read->d_name));
+				}
+			}
+			if (!line.empty())
+			{
+				std::sort(line.begin(), line.end(), std::less<std::string>());
+				for (std::vector<std::string>::iterator iter = line.begin(); iter != line.end();
+						++iter)
+				{
+					if (if_root_dir) path = directory + "/" + *iter;
+					else path = *iter;
+					if (after_slash.size() > 1) replace(after_slash, path, parsed_input);
+					else parsed_input->push_back(path);
+				}
+			}
+			closedir(dir);
+		}
+	}
+	else
+	{
+		if (buffer[0] != '/') path = ".";
+		if (until_slash == ".")
+                {
+                        if (if_root_dir) path = directory + "/" + until_slash;
+                        else path = ".";
+                        if (after_slash.size() > 1) replace(after_slash, path, parsed_input);
+                        else parsed_input->push_back(path);
+                }
+                else if (until_slash == "..")
+                {
+                        if (if_root_dir) path = directory + "/" + until_slash;
+                        else path = "..";
+                        if (after_slash.size() > 1) replace(after_slash, path, parsed_input);
+                        else parsed_input->push_back(path);
+		}
+		else
+		{
+			DIR* dir = opendir(path.c_str());
+			if (!dir) return 1;
+			for (dirent* dir_read = readdir(dir); dir_read; dir_read = readdir(dir))
+			{
+				if (dir_read->d_name[0] == '.') continue;
+				else if (std::string(dir_read->d_name) == "." && std::string(dir_read->d_name) == "..") continue;
+				if (!fnmatch(until_slash.c_str(), dir_read->d_name, 0)) line.push_back(std::string(dir_read->d_name));
+			}
+			if (!line.empty())
+			{
+				std::sort(line.begin(), line.end(), std::less<std::string>());
+				if (if_root_dir)
+				{
+					for (std::vector<std::string>::iterator iter = line.begin(); iter != line.end();
+							++iter)
+					{
+						path = directory + "/" + *iter;
+						parsed_input->push_back(path);
+					}
+				}
+				else
+				{
+					for (std::vector<std::string>::iterator iter = line.begin(); iter != line.end();
+							++iter)
+					{
+						path = *iter;
+						parsed_input->push_back(path);
+					}
+				}
+			}
+			closedir(dir);
+		}
+	}
+	return 0;
+}
+
+int parser(std::string input, std::vector<std::string>* parsed_input)
+{
+	std::vector<std::string> line;
+	char prev_sym = 0;
+	int count_to = 0;
+	int count_from = 0;
+	int count_pipe = 0;
+	int input_size = input.size();
+	for (int i = 0; i < input_size && i != '\n'; ++i)
+	{
+		std::string buffer;
+		char buf_sym = input.at(i);
+		while (!isspace(buf_sym) && buf_sym != '<' && buf_sym != '>' && buf_sym != '?'
+				&& buf_sym != '*' && buf_sym != '|' && i < input_size)
+		{
+			buffer.push_back(buf_sym);
+			prev_sym = buf_sym;
+			++i;
+			buf_sym = input.at(i);
+		}
+		std::string buffer_eliminated, str;
+		char symbol;
+		switch(input[i])
+		{
+			case '<':
+				if (!count_from)
+				{
+					if (!buffer.empty()) parsed_input->push_back(buffer);
+					parsed_input->push_back("<");
+					++count_from;
+				}
+				else
+				{
+					std::fprintf(stderr, "ERROR");
+					return 0;
+				}
+				continue;
+				break;
+			case '>':
+				if (!count_to)
+				{
+					if (!buffer.empty()) parsed_input->push_back(buffer);
+					parsed_input->push_back(">");
+					++count_to;
+				}
+				else
+				{
+					std::fprintf(stderr, "ERROR");
+					return 0;
+				}
+				continue;
+				break;
+			case '|':
+				if (!buffer.empty()) parsed_input->push_back(buffer);
+				parsed_input->push_back("|");
+				++count_pipe;
+				continue;
+				break;
+			case '?':
+				{
+					++i;
+					symbol = buffer.at(i);
+					buffer.push_back('?');
+					while(!isspace(symbol) && symbol != '>' && symbol != '<' && symbol != '|' &&
+						       	symbol != '*' && symbol != '?'
+							&& i < input_size)
+					{
+						buffer.push_back(symbol);
+						++i;
+						symbol = buffer.at(i);
+					}
+					int line_size = line.size();
+					buffer_eliminated = eliminate_slashes(buffer);
+					str = "";
+					replace(buffer_eliminated, str, &line);
+					if (line_size == line.size())
+					{
+						fprintf(stderr, "ERROR");
+						return 0;
+					}
+					continue;
+					break;
+				}
+			case '*':
+				++i;
+                                symbol = buffer.at(i);
+                                buffer.push_back('?');
+                                while(!isspace(symbol) && symbol != '>' && symbol != '<' && symbol != '|' && symbol != '*' && symbol != '?'
+                                                && i < input_size)
+                                {
+                                        buffer.push_back(symbol);
+                                        ++i;
+                                        symbol = buffer.at(i);
+                                }
+                                int line_size = line.size();
+                                buffer_eliminated = eliminate_slashes(buffer);
+                                str = "";
+                                replace(buffer_eliminated, str, &line);
+                                if (line_size == line.size())
+                                {
+                                        fprintf(stderr, "ERROR");
+                                        return 0;
+                                }
+				continue;
+				break;
+			break;
+		}
+		if (!buffer.empty()) line.push_back(buffer);
+	}
+	if (!line.empty())
+	{
+		for (std::vector<std::string>::iterator iter = line.begin(); iter != line.end();
+			++iter) parsed_input->push_back(*iter);
+		if((*parsed_input)[0] == "pwd" && parsed_input->size() == 1) return 1;
+	}
+	if (count_pipe) return 2;
+	return 3;
+}
+
+int main(int argc, char* argv[])
+{
+	if(chdir(getenv("HOME")) == -1) perror("chdir");
+	signal(SIGINT, SIG_IGN);
+	std::string directory = get_directory();
+	char invite_symbol = is_privileged();
+	do
+	{
+		printf("%s %c", directory.c_str(), invite_symbol);
+		std::string console_input;
+		std::getline(std::cin, console_input);
+		printf("\n");
+		std::string element;
+		int counter = 0;
+		while(isspace(console_input.at(counter))) ++counter;
+		while(!isspace(console_input.at(counter)) && console_input.at(counter) != '>' &&
+				console_input.at(counter) != '<' && console_input.at(counter) != '|')
+		{
+			element.push_back(console_input.at(counter));
+			++counter;
+		}
+		if (element == "cd")
+		{
+			std::vector<std::string> argv;
+			if (parser(console_input, &argv) != 0) do_cd(argv);
+		}
+		else
+		{
+			pid_t pid = fork();
+			if (pid == 0)
+			{
+				signal(SIGINT, SIG_DFL);
+				std::vector<std::string> argv;
+				int symbol_marker = parser(console_input, &argv);
+				switch(symbol_marker)
+				{
+					case 0:
+						exit(1);
+					case 1:
+						{
+							std::string directory = get_directory();
+							printf("%s", directory.c_str());
+						}
+						break;
+					case 2:
+						{
+							std::vector<std::vector<std::string>> arguments;
+							std::vector<std::string> line;
+							for(std::vector<std::string>::iterator iter = argv.begin(); iter!=argv.end(); ++iter)
+							{
+								if(*iter == "|" && iter!=argv.begin() && iter!=argv.end())
+								{
+									arguments.push_back(line);
+									line.clear();
+									++iter;
+								}
+								line.push_back(*iter);
+							}
+							arguments.push_back(line);
+							for(int i = 1; i < arguments.size() - 1; ++i)
+							{
+								for(std::vector<std::string>::iterator iter = arguments[i].begin(); 
+										iter!=arguments[i].end(); ++iter)
+								{
+									if(*iter == "<" || *iter == ">") fprintf(stderr, "ERROR");
+								}
+							}
+							if(!fork()) make_pipe(arguments);
+							int status;
+							wait(&status);
+						}
+						break;
+					case 3:
+						if (argv.size()) perform(argv);
+						break;
+				}
+				exit(0);
+			}
+			int st;
+			if(element == "time")
+			{
+				struct timeval start_time, end_time;
+				struct rusage ch_start_utime, ch_end_utime;
+				getrusage(RUSAGE_CHILDREN, &ch_start_utime);
+				gettimeofday(&start_time, NULL);
+				wait(&st);
+				getrusage(RUSAGE_CHILDREN, &ch_end_utime);
+				gettimeofday(&end_time, NULL);
+				double u_time = ch_end_utime.ru_utime.tv_sec - ch_start_utime.ru_utime.tv_sec + (double)(ch_end_utime.ru_utime.tv_usec - ch_start_utime.ru_utime.tv_usec)/1000000;
+				double s_time = ch_end_utime.ru_stime.tv_sec - ch_start_utime.ru_stime.tv_sec + (double)(ch_end_utime.ru_stime.tv_usec - ch_start_utime.ru_stime.tv_usec)/1000000;
+				double r_time = end_time.tv_sec - start_time.tv_sec + (double)(end_time.tv_usec - start_time.tv_usec)/1000000;			
+				printf("real  %.3fs\n", r_time);
+				printf("user  %.3fs\n", u_time);
+				printf("sys   %.3fs\n", s_time);
+			}
+		       	else wait(&st);
+		}
+	}while(1);
+	return 0;
+}
+
