@@ -214,7 +214,7 @@ std::string eliminate_slashes(std::string buffer)
 			do
 			{
 				++i;
-			}while(buffer.at(i) == '/' && i < size);
+			}while(i < size && buffer.at(i) == '/');
 		}
 		else ++i;
 	}
@@ -434,10 +434,10 @@ int parser(std::string input, std::vector<std::string>* parsed_input)
 				}
 			case '*':
 				++i;
-                                if (i < input_size) symbol = buffer.at(i);
-                                buffer.push_back('?');
-                                while(!isspace(symbol) && symbol != '>' && symbol != '<' && symbol != '|' && symbol != '*' && symbol != '?'
-                                                && i < input.size())
+                                if (i < input_size) symbol = input.at(i);
+                                buffer.push_back('*');
+                                while(i < input_size && !isspace(symbol) && symbol != '>' &&
+					       	symbol != '<' && symbol != '|' && symbol != '*' && symbol != '?')
                                 {
                                         buffer.push_back(symbol);
                                         ++i;
