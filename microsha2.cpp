@@ -172,7 +172,8 @@ void perform(std::vector<std::string> element)
 void make_pipe(std::vector<std::vector<std::string>>& piped_input)
 {
 	int iter = 0;
-	for (iter; iter <= piped_input.size(); ++iter)
+	int counter = piped_input.size();
+	for (iter; iter < piped_input.size() - 1; ++iter)
 	{
 		int fd[2];
 		pipe(fd);
@@ -536,7 +537,8 @@ int main()
 								for(std::vector<std::string>::iterator iter = arguments[i].begin(); 
 										iter!=arguments[i].end(); ++iter)
 								{
-									if(*iter == "<" || *iter == ">") fprintf(stderr, "ERROR");
+									if(*iter == "<" || *iter == ">") fprintf(stderr,
+										       	"you can't use '>', '<' in pipeline");
 								}
 							}
 							if(!fork()) make_pipe(arguments);
