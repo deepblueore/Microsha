@@ -82,11 +82,11 @@ void perform(std::vector<std::string> element)
 		{
 			if (iter != element.end() - 1)
 			{
-				if_num_onei - false;
+				if_num_onei = false;
 				++iter;
 				if (*iter == "<" || *iter == ">" || *iter == "/" || *iter == "\\")
 				{
-					fprintf(stderr, "ERROR6");
+					fprintf(stderr, "invalid output\n");
 					return;
 				}
 				std::string tmpl;
@@ -94,10 +94,10 @@ void perform(std::vector<std::string> element)
 				for (int i = 0; i < (*iter).size(); ++i)
 				{
 					if ((*iter)[i] != '\\' || prev_char == '\\') tmpl.push_back((*iter)[i]);
-					else if ((*iter)[i] == '\\' && prev_char == '\\') prev_char = 0;
+					if ((*iter)[i] == '\\' && prev_char == '\\') prev_char = 0;
 					else prev_char = (*iter)[i];
 				}
-				int fid = open((char *)(*iter).c_str(), O_RDWR | O_CREAT | O_TRUNC, 0666);
+				int fid = open((char*)tmpl.c_str(), O_RDWR, 0666);
 				if (fid == -1)
 				{
 					perror("open");
@@ -117,11 +117,11 @@ void perform(std::vector<std::string> element)
 		{
 			if (iter != element.end() - 1)
                         {
-                                if_num_onei - false;
+                                if_num_onei = false;
                                 ++iter;
                                 if (*iter == "<" || *iter == ">" || *iter == "/" || *iter == "\\")
                                 {
-                                        fprintf(stderr, "ERROR4");
+                                        fprintf(stderr, "invalid input");
                                         return;
                                 }
                                 std::string tmpl;
@@ -129,10 +129,10 @@ void perform(std::vector<std::string> element)
                                 for (int i = 0; i < (*iter).size(); ++i)
                                 {
                                         if ((*iter)[i] != '\\' || prev_char == '\\') tmpl.push_back((*iter)[i]);
-                                        else if ((*iter)[i] == '\\' && prev_char == '\\') prev_char = 0;
+                                        if ((*iter)[i] == '\\' && prev_char == '\\') prev_char = 0;
                                         else prev_char = (*iter)[i];
                                 }
-                                int fid = open((char *)(*iter).c_str(), O_RDWR | O_CREAT | O_TRUNC, 0666);
+                                int fid = open((char*)tmpl.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0666);
                                 if (fid == -1)
                                 {
                                         perror("open");
@@ -144,14 +144,14 @@ void perform(std::vector<std::string> element)
                         }
                         else
                         {
-                                fprintf(stderr, "ERROR3");
+                                fprintf(stderr, "there should be something after '>'\n");
                                 return;
                         }
 
 		}
 		if (if_num_onei)
 		{
-			fprintf(stderr, "ERROR2");
+			fprintf(stderr, "you should use only one file\n");
 			return;
 		}
 		line.push_back(*iter);
@@ -380,7 +380,7 @@ int parser(std::string input, std::vector<std::string>* parsed_input)
 				}
 				else
 				{
-					fprintf(stderr, "too many '<'");
+					fprintf(stderr, "too many '<'\n");
 					return 0;
 				}
 				continue;
@@ -394,7 +394,7 @@ int parser(std::string input, std::vector<std::string>* parsed_input)
 				}
 				else
 				{
-					fprintf(stderr, "too many '>'");
+					fprintf(stderr, "too many '>'\n");
 					return 0;
 				}
 				continue;
