@@ -25,6 +25,8 @@ char is_privileged()
 {
 	passwd* user = getpwuid(getuid());
         bool is_root = !(bool)std::strcmp(user->pw_name, "root");
+	//delete(user);
+	//user = NULL;
         if (is_root) return '!';
 	return '>';
 
@@ -279,7 +281,12 @@ void replace(std::string buffer, std::string directory, std::vector<std::string>
 				{
 					if (if_root_dir) path = directory + "/" + (std::string)dir_read->d_name;
 					else path = (std::string)dir_read->d_name;
-					if (stat(path.c_str(), &stat_buf) < 0) return ;
+					if (stat(path.c_str(), &stat_buf) < 0)
+					{
+						//closedir(dir);
+						//dir = NULL;
+						return;
+					}
 					if (S_ISDIR(stat_buf.st_mode)) line.push_back(std::string(dir_read->d_name));
 				}
 			}
@@ -296,7 +303,8 @@ void replace(std::string buffer, std::string directory, std::vector<std::string>
 					else parsed_input->push_back(path);
 				}
 			}
-			closedir(dir);
+			//closedir(dir);
+			//dir = NULL;
 		}
 	}
 	else
@@ -348,6 +356,7 @@ void replace(std::string buffer, std::string directory, std::vector<std::string>
 				}
 			}
 			closedir(dir);
+			dir = NULL;
 		}
 	}
 	return;
