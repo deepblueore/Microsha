@@ -239,18 +239,20 @@ void replace(std::string buffer, std::string directory, std::vector<std::string>
 		++iter;
 		if (iter < buffer_size) symbol = buffer.at(iter);
 	}
+	if (iter < buffer_size) symbol = buffer.at(iter);
 	for (iter; symbol != '/' && iter < buffer_size; ++iter)
 	{
-		if (iter < buffer_size) symbol = buffer.at(iter);
 		until_slash.push_back(symbol);
+		if (iter < buffer_size) symbol = buffer.at(iter);
 	}
 	if (iter >= buffer_size) --iter;
-	if (buffer.at(iter) == '/')
+	if (iter < buffer_size) symbol = buffer.at(iter);
+	if (symbol == '/')
 	{
 		for (iter; iter < buffer_size; ++iter)
 		{
-			if (iter < buffer_size) symbol = buffer.at(iter);
 			after_slash.push_back(symbol);
+			if (iter < buffer_size) symbol = buffer.at(iter);
 		}
 		if (if_root_dir)
 		{
