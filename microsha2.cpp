@@ -48,6 +48,18 @@ std::string get_directory()
 	return directory;
 }
 
+//std::string get_directory_old()
+//{
+//	std::string directory;
+//	do
+//	{
+//		errno = 0;
+//		getcwd(directory.data(), directory.size());
+//
+//	}while(errno == ERANGE);
+//	return directory;
+//}
+
 void do_cd(std::vector<std::string> buffer)
 {
 	if (buffer.size() == 1) 
@@ -207,6 +219,7 @@ std::string eliminate_slashes(std::string buffer)
 			{
 				++i;
 			}while(i < size && buffer.at(i) == '/');
+			--i;
 		}
 	}
 	return buffer_eliminated;
@@ -503,49 +516,44 @@ int main()
 				std::vector<std::string> argv;
 				int symbol_marker = parser(console_input, &argv);
 				//printf("marker: %d\n", symbol_marker);
-				switch(symbol_marker)
+				if (symbol_marker == 0) exit(1);
+				else if (symbol_marker == 1)
 				{
-					case 0:
-						exit(1);
-					case 1:
-						{
-							//printf("we are in case 1\n");
-							std::string directory = get_directory();
-							printf("%s\n", directory.c_str());
-						}
-						break;
-					case 2:
-						{
-							std::vector<std::vector<std::string>> arguments;
-							std::vector<std::string> line;
-							for(std::vector<std::string>::iterator iter = argv.begin(); iter!=argv.end(); ++iter)
-							{
-								if(*iter == "|" && iter!=argv.begin() && iter!=argv.end())
-								{
-									arguments.push_back(line);
-									line.clear();
-									++iter;
-								}
-								line.push_back(*iter);
-							}
-							arguments.push_back(line);
-							for(int i = 1; i < arguments.size() - 1; ++i)
-							{
-								for(std::vector<std::string>::iterator iter = arguments[i].begin(); 
-										iter!=arguments[i].end(); ++iter)
-								{
-									if(*iter == "<" || *iter == ">") fprintf(stderr,
-										       	"you can't use '>', '<' in pipeline");
-								}
-							}
-							if(!fork()) make_pipe(arguments);
-							int status;
-							wait(&status);
-						}
-						break;
-					case 3:
-						if (argv.size()) perform(argv);
-						break;
+					//printf("we are in case 1\n");
+                                        std::string directory = get_directory();
+                                        printf("%s\n", directory.c_str());
+				}
+				else if (symbol_marker == 2)
+				{
+					std::vector<std::vector<std::string>> arguments;
+                                        std::vector<std::string> line;
+                                        for(std::vector<std::string>::iterator iter = argv.begin(); iter!=argv.end(); ++iter)
+					{
+                                        if(*iter == "|" && iter!=argv.begin() && iter!=argv.end())
+					{
+                                        	 arguments.push_back(line);
+                                                 line.clear();
+                                                 ++iter;
+                                        }
+                                        line.push_back(*iter);
+                                        }
+                                        arguments.push_back(line);
+                                        for(int i = 1; i < arguments.size() - 1; ++i)
+                                        {
+                                        	for(std::vector<std::string>::iterator iter = arguments[i].begin();
+							       	iter!=arguments[i].end(); ++iter)
+                                                {
+                                                	if(*iter == "<" || *iter == ">") fprintf(stderr,
+                                                                       "you can't use '>', '<' in pipeline");
+                                                }
+                                        }
+                                if(!fork()) make_pipe(arguments);
+				int status;
+				wait(&status);
+				}
+				if (symbol_marker == 3)
+				{
+					if (argv.size()) perform(argv);
 				}
 				exit(0);
 			}
