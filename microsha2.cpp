@@ -233,7 +233,7 @@ void replace(std::string buffer, std::string directory, std::vector<std::string>
 	int buffer_size = buffer.size();
 	std::string until_slash, after_slash, path;
 	char symbol = buffer.at(0);
-	if (buffer.at(0) == '/') if_root_dir = true;
+	if (symbol == '/') if_root_dir = true;
 	while (iter < buffer_size && symbol == '/')
 	{
 		++iter;
