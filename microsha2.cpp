@@ -20,15 +20,6 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 
-char* double_size(char* array, size_t* size)
-{
-        int size_i = (int)*size;
-        char* array_new = new char[size_i * 2];
-        for (int i = 0; i < size_i; ++i) array_new[i] = array[i];
-        delete array;
-        *size = size_i * 2;
-        return array_new;
-}
 
 char is_privileged()
 {
@@ -41,20 +32,19 @@ char is_privileged()
 
 std::string get_directory()
 {
-	errno = 0;
-        size_t buf_size = 20;
-        char* buffer = new char[buf_size];
-        if (getcwd(buffer, buf_size) == NULL)
-        {
-        	while(errno == ERANGE)
-                {
-                	buffer = double_size(buffer, &buf_size);
-                        errno = 0;
-                        getcwd(buffer, buf_size);
-                }
-        }
+	size_t buf_size = 20;
 	std::string directory;
-	for (int i = 0; i < buf_size; ++i) directory.push_back(buffer[i]);
+	int iter = 0;
+	do
+	{
+		++iter;
+		directory.clear();
+		errno = 0;
+		char* buffer = new char[buf_size*iter];
+		getcwd(buffer, buf_size*iter);
+		for (int i = 0; i < buf_size*iter; ++i) directory.push_back(buffer[i]);
+		delete buffer;
+	}while(errno == ERANGE);
 	return directory;
 }
 
@@ -164,6 +154,7 @@ void perform(std::vector<std::string> element)
 		argv.push_back(NULL);
 		execvp(argv[0], &argv[0]);
 		fprintf(stderr, "unknown command\n");
+		argv.clear();
 		exit(1);
 	}
 	return;
@@ -482,8 +473,14 @@ int main()
 		printf("[%s]%c ", directory.c_str(), invite_symbol);
 		std::string console_input;
 		std::getline(std::cin, console_input);
+		if (std::cin.eof())
+		{
+			printf("\n");
+			exit(0);
+		}
 		std::string element;
 		int counter = 0;
+		if (console_input == "") continue;
 		while(isspace(console_input.at(counter))) ++counter;
 		while(counter < console_input.size() && !isspace(console_input.at(counter)) && console_input.at(counter) != '>' &&
 				console_input.at(counter) != '<' && console_input.at(counter) != '|')
