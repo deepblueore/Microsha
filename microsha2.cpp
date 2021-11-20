@@ -40,10 +40,9 @@ std::string get_directory()
 		++iter;
 		directory.clear();
 		errno = 0;
-		char* buffer = new char[buf_size*iter];
+		char buffer[buf_size*iter];
 		getcwd(buffer, buf_size*iter);
 		for (int i = 0; i < buf_size*iter; ++i) directory.push_back(buffer[i]);
-		delete buffer;
 	}while(errno == ERANGE);
 	return directory;
 }
@@ -297,6 +296,7 @@ void replace(std::string buffer, std::string directory, std::vector<std::string>
 					else parsed_input->push_back(path);
 				}
 			}
+			closedir(dir);
 		}
 	}
 	else
