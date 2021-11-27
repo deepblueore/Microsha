@@ -230,10 +230,10 @@ void replace(std::string buffer, std::string directory, std::vector<std::string>
 {
 	std::vector<std::string> line;
 	int iter = 0;
-	//bool if_root_dir = false;
+	bool if_root_dir = false;
 	int buffer_size = buffer.size();
-	std::string until_slash, after_slash;
-	//if (buffer.at(0) == '/') if_root_dir = true;
+	std::string until_slash, after_slash, path;
+	if (buffer.at(0) == '/') if_root_dir = true;
 	while (iter < buffer_size && buffer.at(iter) == '/') ++iter;
 	while (iter < buffer_size && buffer.at(iter) != '/' && iter)
 	{
@@ -248,8 +248,7 @@ void replace(std::string buffer, std::string directory, std::vector<std::string>
 			after_slash.push_back(buffer.at(iter));
 			++iter;
 		}
-		std::string path;
-		if (buffer.at(0) == '/')
+		if (if_root_dir)
 		{
 			if (directory.empty()) path = '/';
 			else path = directory;
@@ -257,7 +256,7 @@ void replace(std::string buffer, std::string directory, std::vector<std::string>
 		else path = '.';
 		if (until_slash == "." || until_slash == "..")
 		{
-			if (buffer.at(0) == '/') path = directory + "/" + until_slash;
+			if (if_root_dir) path = directory + "/" + until_slash;
 			else if (until_slash == ".") path = ".";
 			else path = "..";
 			if (after_slash.size() > 1) replace(after_slash, path, parsed_input);
@@ -265,7 +264,7 @@ void replace(std::string buffer, std::string directory, std::vector<std::string>
 		}
 		else
 		{
-			//struct stat stat_buf;
+			struct stat stat_buf;
 			DIR* dir = opendir(path.c_str());
 			if (!dir) return;
 			for (dirent* dir_read = readdir(dir); dir_read; dir_read = readdir(dir))
@@ -273,9 +272,8 @@ void replace(std::string buffer, std::string directory, std::vector<std::string>
 				if (std::string(dir_read->d_name) == "." || std::string(dir_read->d_name) == "..") continue;
 				if (!fnmatch(until_slash.c_str(), dir_read->d_name, 0))
 				{
-					if (buffer.at(0) == '/') path = directory + "/" + (std::string)dir_read->d_name;
+					if (if_root_dir) path = directory + "/" + (std::string)dir_read->d_name;
 					else path = (std::string)dir_read->d_name;
-					struct stat stat_buf;
 					if (stat(path.c_str(), &stat_buf) < 0)
 					{
 						//closedir(dir);
@@ -285,27 +283,25 @@ void replace(std::string buffer, std::string directory, std::vector<std::string>
 					if (S_ISDIR(stat_buf.st_mode)) line.push_back(std::string(dir_read->d_name));
 				}
 			}
-			if (closedir(dir) < 0) fprintf(stderr, "can't close the file");
 			if (!line.empty())
 			{
 				std::sort(line.begin(), line.end(), std::less<std::string>());
 				for (std::vector<std::string>::iterator iter = line.begin(); iter != line.end();
 						++iter)
 				{
-					if (buffer.at(0) == '/') path = directory + "/" + *iter;
+					if (if_root_dir) path = directory + "/" + *iter;
 					else path = *iter;
 					if (after_slash.size() >= 1) replace(after_slash, path, parsed_input);
 					else parsed_input->push_back(path);
 				}
 			}
-			//closedir(dir);
-			//dir = NULL;
+			closedir(dir);
+			dir = NULL;
 		}
 	}
 	else
 	{
-		std::string path;
-		if (buffer.at(0) == '/')
+		if (if_root_dir)
 		{
 			if (directory.empty()) path = '/';
 			else path = directory;
@@ -313,7 +309,7 @@ void replace(std::string buffer, std::string directory, std::vector<std::string>
 		else path = '.';
 		if (until_slash == "." || until_slash == "..")
                 {
-                        if (buffer.at(0) == '/') path = directory + "/" + until_slash;
+                        if (if_root_dir) path = directory + "/" + until_slash;
                         else if (until_slash == ".") path = ".";
 			else path = "..";
                         if (after_slash.size() > 1) replace(after_slash, path, parsed_input);
@@ -332,12 +328,12 @@ void replace(std::string buffer, std::string directory, std::vector<std::string>
 			if (!line.empty())
 			{
 				std::sort(line.begin(), line.end(), std::less<std::string>());
-				if (buffer.at(0) == '/')
+				if (if_root_dir)
 				{
 					for (std::vector<std::string>::iterator iter = line.begin(); iter != line.end();
 							++iter)
 					{
-						std::string path = directory + "/" + *iter;
+						path = directory + "/" + *iter;
 						parsed_input->push_back(path);
 					}
 				}
@@ -346,7 +342,7 @@ void replace(std::string buffer, std::string directory, std::vector<std::string>
 					for (std::vector<std::string>::iterator iter = line.begin(); iter != line.end();
 							++iter)
 					{
-						std::string path = *iter;
+						path = *iter;
 						parsed_input->push_back(path);
 					}
 				}
