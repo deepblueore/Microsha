@@ -112,7 +112,7 @@ void perform(std::vector<std::string> element)
 			}
 			else
 			{
-				fprintf(stderr, "ERROR5");
+				fprintf(stderr, "ERROR5!");
 				return;
 			}
 		}
@@ -226,22 +226,21 @@ std::string eliminate_slashes(std::string buffer)
 	return buffer_eliminated;
 }
 
-void replace(std::string buffer, std::string directory, std::vector<std::string>* parsed_input)
-{
+void replace(std::string buffer, std::string directory, std::vector<std::string>* parsed_input){
 	std::vector<std::string> line;
+	int buffer_size = buffer.size();
 	int iter = 0;
 	bool if_root_dir = false;
-	int buffer_size = buffer.size();
 	std::string until_slash, after_slash, path;
 	if (buffer.at(0) == '/') if_root_dir = true;
-	while (iter < buffer_size && buffer.at(iter) == '/') ++iter;
-	while (iter < buffer_size && buffer.at(iter) != '/' && iter)
+	while (iter < buffer_size && buffer.at(iter) =='/') ++iter;
+	while (iter < buffer_size && buffer.at(iter) !='/')
 	{
 		until_slash.push_back(buffer.at(iter));
 		++iter;
 	}
-	if (iter >= buffer_size) --iter;
-	if (buffer.at(iter) == '/')
+	if (iter == buffer_size) --iter;
+	if (buffer.at(iter)=='/')
 	{
 		while (iter < buffer_size)
 		{
@@ -254,44 +253,38 @@ void replace(std::string buffer, std::string directory, std::vector<std::string>
 			else path = directory;
 		}
 		else path = '.';
-		if (until_slash == "." || until_slash == "..")
+		if(until_slash == ".." || until_slash == ".")
 		{
-			if (if_root_dir) path = directory + "/" + until_slash;
+			if (if_root_dir) path = directory  + '/' + until_slash;
 			else if (until_slash == ".") path = ".";
 			else path = "..";
 			if (after_slash.size() > 1) replace(after_slash, path, parsed_input);
 			else parsed_input->push_back(path);
-		}
+		} 
 		else
 		{
 			struct stat stat_buf;
-			DIR* dir = opendir(path.c_str());
+			DIR *dir = opendir(path.c_str());
 			if (!dir) return;
-			for (dirent* dir_read = readdir(dir); dir_read; dir_read = readdir(dir))
+			for (dirent *dir_read = readdir(dir); dir_read; dir_read = readdir(dir))
 			{
 				if (std::string(dir_read->d_name) == "." || std::string(dir_read->d_name) == "..") continue;
 				if (!fnmatch(until_slash.c_str(), dir_read->d_name, 0))
 				{
-					if (if_root_dir) path = directory + "/" + (std::string)dir_read->d_name;
+					if (if_root_dir) path = directory  + '/' + (std::string)dir_read->d_name;
 					else path = (std::string)dir_read->d_name;
-					if (stat(path.c_str(), &stat_buf) < 0)
-					{
-						//closedir(dir);
-						//dir = NULL;
-						return;
-					}
+					if (stat(path.c_str(), &stat_buf)<0) return;
 					if (S_ISDIR(stat_buf.st_mode)) line.push_back(std::string(dir_read->d_name));
 				}
 			}
-			if (!line.empty())
+			if(!line.empty())
 			{
-				std::sort(line.begin(), line.end(), std::less<std::string>());
-				for (std::vector<std::string>::iterator iter = line.begin(); iter != line.end();
-						++iter)
+				sort(line.begin(), line.end(), std::less<std::string>());
+				for(std::vector<std::string>::iterator iter = line.begin(); iter!=line.end(); ++iter)
 				{
-					if (if_root_dir) path = directory + "/" + *iter;
+					if (if_root_dir) path = directory  + '/' + *iter;
 					else path = *iter;
-					if (after_slash.size() >= 1) replace(after_slash, path, parsed_input);
+					if(after_slash.size() > 1) replace(after_slash, path, parsed_input);
 					else parsed_input->push_back(path);
 				}
 			}
@@ -301,46 +294,44 @@ void replace(std::string buffer, std::string directory, std::vector<std::string>
 	}
 	else
 	{
-		if (if_root_dir)
+		if(if_root_dir)
 		{
-			if (directory.empty()) path = '/';
+			if(directory.empty()) path = '/';
 			else path = directory;
 		}
 		else path = '.';
-		if (until_slash == "." || until_slash == "..")
-                {
-                        if (if_root_dir) path = directory + "/" + until_slash;
-                        else if (until_slash == ".") path = ".";
+		if(until_slash == ".." || until_slash == ".")
+		{
+			if(if_root_dir) path = directory  + '/' + until_slash;
+			else if (until_slash == ".") path = ".";
 			else path = "..";
-                        if (after_slash.size() > 1) replace(after_slash, path, parsed_input);
-                        else parsed_input->push_back(path);
-                }
+			if(after_slash.size() > 1) replace(after_slash, path, parsed_input);
+			else parsed_input->push_back(path);
+		}
 		else
 		{
-			DIR* dir = opendir(path.c_str());
-			if (!dir) return;
-			for (dirent* dir_read = readdir(dir); dir_read; dir_read = readdir(dir))
+			DIR *dir = opendir(path.c_str());
+			if(!dir) return;
+			for(dirent *dir_read = readdir(dir); dir_read; dir_read = readdir(dir))
 			{
-				if (dir_read->d_name[0] == '.') continue;
-				else if (std::string(dir_read->d_name) == "." && std::string(dir_read->d_name) == "..") continue;
-				if (!fnmatch(until_slash.c_str(), dir_read->d_name, 0)) line.push_back(std::string(dir_read->d_name));
+				if(dir_read->d_name[0]=='.') continue;
+				if(std::string(dir_read->d_name) == "." || std::string(dir_read->d_name) == "..") continue;
+				if(!fnmatch(until_slash.c_str(), dir_read->d_name, 0)) line.push_back(std::string(dir_read->d_name));	
 			}
-			if (!line.empty())
+			if(!line.empty())
 			{
-				std::sort(line.begin(), line.end(), std::less<std::string>());
-				if (if_root_dir)
+				sort(line.begin(), line.end(), std::less<std::string>());
+				if(if_root_dir)
 				{
-					for (std::vector<std::string>::iterator iter = line.begin(); iter != line.end();
-							++iter)
+					for(std::vector<std::string>::iterator iter = line.begin(); iter!=line.end(); ++iter)
 					{
-						path = directory + "/" + *iter;
+						path = directory + '/' + *iter;
 						parsed_input->push_back(path);
 					}
 				}
 				else
 				{
-					for (std::vector<std::string>::iterator iter = line.begin(); iter != line.end();
-							++iter)
+					for(std::vector<std::string>::iterator iter = line.begin(); iter!=line.end(); ++iter)
 					{
 						path = *iter;
 						parsed_input->push_back(path);
@@ -353,6 +344,7 @@ void replace(std::string buffer, std::string directory, std::vector<std::string>
 	}
 	return;
 }
+					
 
 int parser(std::string input, std::vector<std::string>* parsed_input)
 {
@@ -443,7 +435,7 @@ int parser(std::string input, std::vector<std::string>* parsed_input)
                                 if (i < input_size) symbol = input.at(i);
                                 buffer.push_back('*');
 				//printf("succeed\n;");
-                                while(i < input_size + 1 && !isspace(symbol) && symbol != '>' &&
+                                while(i < input_size && !isspace(symbol) && symbol != '>' &&
 					       	symbol != '<' && symbol != '|' && symbol != '*' && symbol != '?')
                                 {
                                         buffer.push_back(symbol);
@@ -532,13 +524,13 @@ int main()
                                         std::vector<std::string> line;
                                         for(std::vector<std::string>::iterator iter = argv.begin(); iter!=argv.end(); ++iter)
 					{
-                                        if(*iter == "|" && iter!=argv.begin() && iter!=argv.end())
-					{
-                                        	 arguments.push_back(line);
-                                                 line.clear();
-                                                 ++iter;
-                                        }
-                                        line.push_back(*iter);
+                                        	if(*iter == "|" && iter!=argv.begin() && iter!=argv.end())
+						{
+                                        		 arguments.push_back(line);
+                                                	 line.clear();
+                                                	 ++iter;
+                                        	}
+                                        	line.push_back(*iter);
                                         }
                                         arguments.push_back(line);
                                         for(int i = 1; i < arguments.size() - 1; ++i)
@@ -546,15 +538,23 @@ int main()
                                         	for(std::vector<std::string>::iterator iter = arguments[i].begin();
 							       	iter!=arguments[i].end(); ++iter)
                                                 {
-                                                	if(*iter == "<" || *iter == ">") fprintf(stderr,
-                                                                       "you can't use '>', '<' in pipeline");
+							if(*iter == "<") 
+							{
+								fprintf(stderr, "you can't use '<' in pipeline\n");
+								exit(1);
+							}
+							if(*iter == ">") 
+							{
+								fprintf(stderr, "you can't use '>' in pipeline\n");
+								exit(1);
+							}
                                                 }
                                         }
-                                if(!fork()) make_pipe(arguments);
-				int status;
-				wait(&status);
-				}
-				if (symbol_marker == 3)
+                                	if(!fork()) make_pipe(arguments);
+					int status;
+					wait(&status);
+					}
+				else if (symbol_marker == 3)
 				{
 					if (argv.size()) perform(argv);
 				}
